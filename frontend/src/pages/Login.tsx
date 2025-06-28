@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CarIcon, Eye, EyeOff, Users, Shield } from "lucide-react";
+import { Eye, EyeOff, Users, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/services/api";
 
@@ -65,8 +65,7 @@ const Login = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center space-x-2">
-            <CarIcon className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">RentCar</span>
+            <img src="/Logo.jpg" alt="Logo" className="h-12 w-12 rounded" />
           </Link>
         </div>
 

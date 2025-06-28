@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CarIcon, Users, Clock, Star } from "lucide-react";
+import { Users, Clock, Star } from "lucide-react";
 
 const Index = () => {
   const [user, setUser] = useState(null); // This will be managed by auth context later
@@ -44,8 +44,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
-              <CarIcon className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">RentCar</span>
+              <img src="/Logo.jpg" alt="Logo" className="h-12 w-12 rounded" />
             </div>
             <nav className="hidden md:flex space-x-8">
               <Link to="/cars" className="text-gray-700 hover:text-blue-600">Browse Cars</Link>
@@ -95,7 +94,7 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <CarIcon className="h-8 w-8 text-blue-600" />
+                <img src="/Logo.jpg" alt="Premium Fleet" className="h-8 w-8 rounded" />
               </div>
               <h3 className="text-xl font-semibold mb-2">Premium Fleet</h3>
               <p className="text-gray-600">Well-maintained vehicles from top brands</p>
@@ -109,7 +108,7 @@ const Index = () => {
             </div>
             <div className="text-center">
               <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Star className="h-8 w-8 text-blue-600" />
+                <img src="/Logo.jpg" alt="Best Rates" className="h-8 w-8 rounded" />
               </div>
               <h3 className="text-xl font-semibold mb-2">Best Rates</h3>
               <p className="text-gray-600">Competitive pricing with no hidden fees</p>
@@ -173,7 +172,6 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <CarIcon className="h-8 w-8 text-blue-400" />
                 <span className="text-2xl font-bold">RentCar</span>
               </div>
               <p className="text-gray-400">Your trusted car rental partner</p>

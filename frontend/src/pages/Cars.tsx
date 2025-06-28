@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CarIcon, Users, Star, Search, Filter, ArrowLeft } from "lucide-react";
+import { Users, Star, Search, Filter, ArrowLeft } from "lucide-react";
 import { carsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import CarLoader from "@/components/ui/CarLoader";
 
 const Cars = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -60,10 +61,10 @@ const Cars = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <CarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
-          <p className="text-gray-600">Loading cars...</p>
+          <CarLoader className="mb-6" />
+          <p className="text-gray-600 text-lg">Loading cars...</p>
         </div>
       </div>
     );
@@ -73,10 +74,9 @@ const Cars = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
-          <Link to="/" className="text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="h-6 w-6" />
+          <Link to="/" className="flex items-center space-x-2">
+            <img src="/Logo.jpg" alt="Logo" className="h-12 w-12 rounded" />
           </Link>
-          <h1 className="text-2xl font-bold">Available Cars</h1>
         </div>
         {user && (
           <Link to="/dashboard">
@@ -183,7 +183,12 @@ const Cars = () => {
         {filteredCars.length === 0 && (
           <Card className="col-span-full">
             <CardContent className="text-center py-8">
-              <CarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <div className="text-gray-400 mx-auto mb-4">
+                <svg className="h-12 w-12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                  <path d="M12 6v6l4 2" strokeWidth="2"/>
+                </svg>
+              </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No cars found</h3>
               <p className="text-gray-600">No cars match your search criteria</p>
             </CardContent>

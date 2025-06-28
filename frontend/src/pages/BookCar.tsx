@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { CarIcon, ArrowLeft, Calendar, Clock, Users, DollarSign, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Users, DollarSign, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { carsAPI, bookingsAPI } from "@/services/api";
+import CarLoader from "@/components/ui/CarLoader";
 
 const BookCar = () => {
   const { carId } = useParams();
@@ -152,10 +153,10 @@ const BookCar = () => {
 
   if (isLoadingCar || !car || !user) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <CarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
-          <p className="text-gray-600">Loading car details...</p>
+          <CarLoader className="mb-6" />
+          <p className="text-gray-600 text-lg">Loading car details...</p>
         </div>
       </div>
     );
@@ -171,8 +172,7 @@ const BookCar = () => {
           <div className="flex justify-between items-center h-16">
             <Link to="/cars" className="flex items-center space-x-2">
               <ArrowLeft className="h-5 w-5" />
-              <CarIcon className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">RentCar</span>
+              <img src="/Logo.jpg" alt="Logo" className="h-12 w-12 rounded" />
             </Link>
             <Link to="/dashboard">
               <Button variant="outline">Dashboard</Button>

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CarIcon, Shield, Clock, Users, Star, Award } from "lucide-react";
+import { Shield, Clock, Users, Star, Award } from "lucide-react";
 
 const About = () => {
   return (
@@ -26,7 +26,7 @@ const About = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         <Card>
           <CardHeader>
-            <CarIcon className="w-12 h-12 text-blue-600 mb-4" />
+            <img src="/Logo.jpg" alt="Premium Fleet" className="w-12 h-12 rounded mb-4" />
             <CardTitle>Premium Fleet</CardTitle>
             <CardDescription>
               Choose from our extensive collection of well-maintained vehicles, from economy to luxury.

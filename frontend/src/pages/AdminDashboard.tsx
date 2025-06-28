@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CarIcon, Plus, Users, Calendar, TrendingUp, AlertTriangle, LogOut } from "lucide-react";
+import { Plus, Users, Calendar, TrendingUp, AlertTriangle, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CarManagement from "@/components/admin/CarManagement";
 import BookingManagement from "@/components/admin/BookingManagement";
 import AdminAnalytics from "@/components/admin/AdminAnalytics";
 import UserManagement from "@/components/admin/UserManagement";
 import { carsAPI, bookingsAPI, usersAPI } from "@/services/api";
+import CarLoader from "@/components/ui/CarLoader";
 
 const AdminDashboard = () => {
   const [user, setUser] = useState(null);
@@ -86,10 +87,10 @@ const AdminDashboard = () => {
 
   if (!user || isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <CarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
-          <p className="text-gray-600">Loading dashboard...</p>
+          <CarLoader className="mb-6" />
+          <p className="text-gray-600 text-lg">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -103,8 +104,7 @@ const AdminDashboard = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <Link to="/" className="flex items-center space-x-2">
-                <CarIcon className="h-8 w-8 text-blue-600" />
-                <span className="text-2xl font-bold text-gray-900">RentCar Admin</span>
+                <img src="/Logo.jpg" alt="Logo" className="h-12 w-12 rounded" />
               </Link>
             </div>
             <div className="flex items-center space-x-4">
@@ -124,7 +124,6 @@ const AdminDashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Cars</CardTitle>
-              <CarIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalCars}</div>
@@ -134,7 +133,6 @@ const AdminDashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Bookings</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.activeBookings}</div>
@@ -144,7 +142,6 @@ const AdminDashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalUsers}</div>
@@ -154,7 +151,6 @@ const AdminDashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-500">{stats.lowStockCars}</div>
@@ -164,7 +160,6 @@ const AdminDashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-500">₹{stats.revenue}</div>

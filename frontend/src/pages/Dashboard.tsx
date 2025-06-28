@@ -3,9 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CarIcon, Calendar, Clock, User, LogOut, Eye } from "lucide-react";
+import { Calendar, Clock, User, LogOut, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { bookingsAPI } from "@/services/api";
+import CarLoader from "@/components/ui/CarLoader";
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
@@ -64,10 +65,10 @@ const Dashboard = () => {
 
   if (!user || isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <CarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
-          <p className="text-gray-600">Loading...</p>
+          <CarLoader className="mb-6" />
+          <p className="text-gray-600 text-lg">Loading...</p>
         </div>
       </div>
     );
@@ -80,8 +81,7 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link to="/" className="flex items-center space-x-2">
-              <CarIcon className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">RentCar</span>
+              <img src="/Logo.jpg" alt="Logo" className="h-12 w-12 rounded" />
             </Link>
             <div className="flex items-center space-x-4">
               <Link to="/cars">
@@ -156,7 +156,6 @@ const Dashboard = () => {
           <CardContent>
             {bookings.length === 0 ? (
               <div className="text-center py-8">
-                <CarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No bookings yet</h3>
                 <p className="text-gray-600 mb-4">Ready to hit the road? Book your first car!</p>
                 <Link to="/cars">
