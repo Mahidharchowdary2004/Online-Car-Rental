@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Clock, Star } from "lucide-react";
 
 const Index = () => {
-  const [user, setUser] = useState(null); // This will be managed by auth context later
+  const [user, setUser] = useState(() => {
+    const userData = localStorage.getItem("user");
+    return userData ? JSON.parse(userData) : null;
+  });
+  const navigate = useNavigate();
 
   const featuredCars = [
     {
@@ -36,6 +40,10 @@ const Index = () => {
       rating: 4.7
     }
   ];
+
+  const handleBrowseCars = () => {
+    navigate("/login");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -73,11 +81,9 @@ const Index = () => {
             Choose from our wide selection of premium vehicles. Affordable rates, reliable service, and flexible booking options.
           </p>
           <div className="flex justify-center space-x-4">
-            <Link to="/cars">
-              <Button size="lg" className="px-8 py-3">
-                Browse Cars
-              </Button>
-            </Link>
+            <Button size="lg" className="px-8 py-3" onClick={handleBrowseCars}>
+              Browse Cars
+            </Button>
             <Link to="/register">
               <Button variant="outline" size="lg" className="px-8 py-3">
                 Get Started

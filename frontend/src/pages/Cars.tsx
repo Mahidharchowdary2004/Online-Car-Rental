@@ -16,6 +16,7 @@ const Cars = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -169,11 +170,9 @@ const Cars = () => {
                     </Button>
                   </Link>
                 ) : (
-                  <Link to="/login">
-                    <Button variant="outline">
-                      Login to Book
-                    </Button>
-                  </Link>
+                  <Button variant="outline" onClick={() => navigate('/login')}>
+                    Login to Book
+                  </Button>
                 )}
               </div>
             </CardContent>
