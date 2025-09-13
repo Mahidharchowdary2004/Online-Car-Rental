@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, TrendingDown, Calendar, DollarSign, Car, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, DollarSign, Car, Users, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const AdminAnalytics = () => {
   const [analytics, setAnalytics] = useState({
@@ -13,102 +14,133 @@ const AdminAnalytics = () => {
     userGrowth: [],
     categoryDistribution: []
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [dataStatus, setDataStatus] = useState({ bookings: 0, cars: 0, users: 0 });
 
   useEffect(() => {
     generateAnalytics();
   }, []);
 
   const generateAnalytics = () => {
-    const bookings = JSON.parse(localStorage.getItem("bookings") || "[]");
-    const cars = JSON.parse(localStorage.getItem("adminCars") || "[]");
-    const users = JSON.parse(localStorage.getItem("adminUsers") || "[]");
-
-    // Monthly Revenue
-    const monthlyRevenue = [];
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date();
-      date.setMonth(date.getMonth() - i);
-      const month = date.toLocaleString('default', { month: 'short' });
+    try {
+      setIsLoading(true);
       
-      const monthBookings = bookings.filter(booking => {
-        const bookingDate = new Date(booking.bookingDate);
-        return bookingDate.getMonth() === date.getMonth() && 
-               bookingDate.getFullYear() === date.getFullYear();
+      // Get data from localStorage
+      const bookings = JSON.parse(localStorage.getItem("bookings") || "[]");
+      const cars = JSON.parse(localStorage.getItem("adminCars") || "[]");
+      const users = JSON.parse(localStorage.getItem("adminUsers") || "[]");
+      
+      // Update data status for debugging
+      setDataStatus({ 
+        bookings: bookings.length, 
+        cars: cars.length, 
+        users: users.length 
       });
       
-      const revenue = monthBookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
-      monthlyRevenue.push({ month, revenue, bookings: monthBookings.length });
-    }
+      console.log('Analytics Data Debug:', { bookings, cars, users });
 
-    // Car Utilization
-    const carUtilization = cars.map(car => {
-      const carBookings = bookings.filter(b => b.carId === car.id && b.status === "confirmed");
-      const utilizationRate = car.quantity > 0 ? ((car.quantity - car.available) / car.quantity) * 100 : 0;
-      
-      return {
-        name: car.name,
-        utilization: Math.round(utilizationRate),
-        bookings: carBookings.length,
-        revenue: carBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0)
-      };
-    });
-
-    // Top Cars by Revenue
-    const topCars = carUtilization
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
-
-    // Booking Trends (last 30 days)
-    const bookingTrends = [];
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dayBookings = bookings.filter(booking => {
-        const bookingDate = new Date(booking.bookingDate);
-        return bookingDate.toDateString() === date.toDateString();
-      });
-      
-      bookingTrends.push({
-        date: date.toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-        bookings: dayBookings.length
-      });
-    }
-
-    // User Growth
-    const userGrowth = [];
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date();
-      date.setMonth(date.getMonth() - i);
-      const month = date.toLocaleString('default', { month: 'short' });
-      
-      const monthUsers = users.filter(user => {
-        const joinDate = new Date(user.joinDate);
-        return joinDate.getMonth() === date.getMonth() && 
-               joinDate.getFullYear() === date.getFullYear();
-      });
-      
-      userGrowth.push({ month, users: monthUsers.length });
-    }
-
-    // Category Distribution
-    const categoryDistribution = cars.reduce((acc, car) => {
-      const existing = acc.find(item => item.name === car.category);
-      if (existing) {
-        existing.value += 1;
-      } else {
-        acc.push({ name: car.category, value: 1 });
+      // Monthly Revenue - Last 12 months
+      const monthlyRevenue = [];
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const month = date.toLocaleString('default', { month: 'short' });
+        
+        const monthBookings = bookings.filter(booking => {
+          if (!booking.bookingDate) return false;
+          const bookingDate = new Date(booking.bookingDate);
+          return bookingDate.getMonth() === date.getMonth() && 
+                 bookingDate.getFullYear() === date.getFullYear();
+        });
+        
+        const revenue = monthBookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
+        monthlyRevenue.push({ month, revenue, bookings: monthBookings.length });
       }
-      return acc;
-    }, []);
 
-    setAnalytics({
-      monthlyRevenue,
-      carUtilization,
-      bookingTrends,
-      topCars,
-      userGrowth,
-      categoryDistribution
-    });
+      // Car Utilization
+      const carUtilization = cars.map(car => {
+        const carBookings = bookings.filter(b => 
+          b.carId === car.id && (b.status === "confirmed" || b.status === "active")
+        );
+        
+        const totalQuantity = car.quantity || 1;
+        const availableQuantity = car.available || 0;
+        const utilizationRate = totalQuantity > 0 ? 
+          ((totalQuantity - availableQuantity) / totalQuantity) * 100 : 0;
+        
+        return {
+          name: car.name || `Car ${car.id}`,
+          utilization: Math.round(Math.max(0, Math.min(100, utilizationRate))),
+          bookings: carBookings.length,
+          revenue: carBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0)
+        };
+      });
+
+      // Top Cars by Revenue
+      const topCars = carUtilization
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5);
+
+      // Booking Trends - Last 30 days
+      const bookingTrends = [];
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        
+        const dayBookings = bookings.filter(booking => {
+          if (!booking.bookingDate) return false;
+          const bookingDate = new Date(booking.bookingDate);
+          return bookingDate.toDateString() === date.toDateString();
+        });
+        
+        bookingTrends.push({
+          date: date.toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+          bookings: dayBookings.length
+        });
+      }
+
+      // User Growth - Last 12 months
+      const userGrowth = [];
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const month = date.toLocaleString('default', { month: 'short' });
+        
+        const monthUsers = users.filter(user => {
+          if (!user.joinDate && !user.createdAt) return false;
+          const joinDate = new Date(user.joinDate || user.createdAt);
+          return joinDate.getMonth() === date.getMonth() && 
+                 joinDate.getFullYear() === date.getFullYear();
+        });
+        
+        userGrowth.push({ month, users: monthUsers.length });
+      }
+
+      // Category Distribution
+      const categoryDistribution = cars.reduce((acc, car) => {
+        const category = car.category || car.type || 'Other';
+        const existing = acc.find(item => item.name === category);
+        if (existing) {
+          existing.value += 1;
+        } else {
+          acc.push({ name: category, value: 1 });
+        }
+        return acc;
+      }, []);
+
+      setAnalytics({
+        monthlyRevenue,
+        carUtilization,
+        bookingTrends,
+        topCars,
+        userGrowth,
+        categoryDistribution
+      });
+    } catch (error) {
+      console.error('Error generating analytics:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
@@ -117,9 +149,49 @@ const AdminAnalytics = () => {
   const lastMonth = analytics.monthlyRevenue[analytics.monthlyRevenue.length - 2];
   const revenueGrowth = lastMonth ? ((currentMonth?.revenue - lastMonth.revenue) / lastMonth.revenue * 100) : 0;
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Analytics Dashboard</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Analytics Dashboard</h2>
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-500">
+            Data: {dataStatus.bookings} bookings, {dataStatus.cars} cars, {dataStatus.users} users
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={generateAnalytics}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Show message if no data */}
+      {dataStatus.bookings === 0 && dataStatus.cars === 0 && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-gray-500">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">No Data Available</h3>
+              <p>Add some cars and bookings to see analytics data.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

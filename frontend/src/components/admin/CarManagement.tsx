@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,9 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { carsAPI } from "@/services/api";
+import { carsAPI, bookingsAPI } from "@/services/api";
 
 const CarManagement = ({ onStatsUpdate }) => {
   const [cars, setCars] = useState([]);
@@ -17,6 +17,9 @@ const CarManagement = ({ onStatsUpdate }) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [updatingQuantities, setUpdatingQuantities] = useState(new Set());
+  const [pendingUpdates, setPendingUpdates] = useState(new Map());
+  const updateTimeouts = useRef(new Map());
   const [formData, setFormData] = useState({
     name: "",
     model: "",
@@ -39,7 +42,12 @@ const CarManagement = ({ onStatsUpdate }) => {
     try {
       setLoading(true);
       const data = await carsAPI.getAll();
-      setCars(data);
+      
+      // Sync availability with actual bookings
+      await syncCarAvailability(data);
+      
+      const updatedData = await carsAPI.getAll();
+      setCars(updatedData);
     } catch (error) {
       toast({
         title: "Error loading cars",
@@ -48,6 +56,37 @@ const CarManagement = ({ onStatsUpdate }) => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncCarAvailability = async (cars) => {
+    try {
+      // Get all confirmed/active bookings
+      const allBookings = await bookingsAPI.getAll();
+      const activeBookings = allBookings.filter(booking => 
+        booking.status === 'confirmed' || booking.status === 'pending'
+      );
+      
+      // Update each car's availability based on actual bookings
+      for (const car of cars) {
+        const carBookings = activeBookings.filter(booking => 
+          booking.carId === car._id || 
+          (booking.carId && booking.carId._id === car._id)
+        );
+        
+        const bookedCount = carBookings.length;
+        const actualAvailable = Math.max(0, car.quantity - bookedCount);
+        
+        // Only update if there's a discrepancy
+        if (car.available !== actualAvailable) {
+          await carsAPI.update(car._id, {
+            ...car,
+            available: actualAvailable
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error syncing car availability:', error);
     }
   };
 
@@ -64,9 +103,14 @@ const CarManagement = ({ onStatsUpdate }) => {
         features: formData.features.split(',').map(f => f.trim())
       };
       
-      await carsAPI.create(newCar);
-      await loadCars();
-      onStatsUpdate();
+      const createdCar = await carsAPI.create(newCar);
+      
+      // Add the new car to the state without reloading
+      setCars(prevCars => [...prevCars, createdCar]);
+      
+      if (onStatsUpdate) {
+        onStatsUpdate();
+      }
       
       setFormData({
         name: "", model: "", image: "", pricePerHour: "", description: "",
@@ -101,9 +145,18 @@ const CarManagement = ({ onStatsUpdate }) => {
         features: formData.features.split(',').map(f => f.trim())
       };
       
-      await carsAPI.update(editingCar._id, updatedCarData);
-      await loadCars();
-      onStatsUpdate();
+      const updatedCar = await carsAPI.update(editingCar._id, updatedCarData);
+      
+      // Update the specific car in state without reloading
+      setCars(prevCars => 
+        prevCars.map(car => 
+          car._id === editingCar._id ? { ...car, ...updatedCar } : car
+        )
+      );
+      
+      if (onStatsUpdate) {
+        onStatsUpdate();
+      }
       
       setIsEditDialogOpen(false);
       setEditingCar(null);
@@ -127,8 +180,13 @@ const CarManagement = ({ onStatsUpdate }) => {
     try {
       setLoading(true);
       await carsAPI.delete(carId);
-      await loadCars();
-      onStatsUpdate();
+      
+      // Remove the car from state without reloading
+      setCars(prevCars => prevCars.filter(car => car._id !== carId));
+      
+      if (onStatsUpdate) {
+        onStatsUpdate();
+      }
       
       toast({
         title: "Car deleted",
@@ -163,28 +221,112 @@ const CarManagement = ({ onStatsUpdate }) => {
     setIsEditDialogOpen(true);
   };
 
-  const adjustQuantity = async (carId, newQuantity) => {
-    try {
-      const car = cars.find(c => c._id === carId);
-      await carsAPI.update(carId, { 
-        ...car, 
-        quantity: newQuantity, 
-        available: Math.min(car.available, newQuantity) 
-      });
-      await loadCars();
-      onStatsUpdate();
-      
+  const adjustQuantity = async (carId, change) => {
+    const car = cars.find(c => c._id === carId);
+    const newQuantity = car.quantity + change;
+    
+    if (newQuantity < 0) {
       toast({
-        title: "Quantity updated",
-        description: "Car quantity has been adjusted.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error updating quantity",
-        description: error.message,
+        title: "Invalid quantity",
+        description: "Quantity cannot be negative.",
         variant: "destructive"
       });
+      return;
     }
+    
+    // Optimistically update the UI immediately
+    setCars(prevCars => 
+      prevCars.map(c => {
+        if (c._id === carId) {
+          const newAvailable = Math.max(0, c.available + change);
+          return { ...c, quantity: newQuantity, available: newAvailable };
+        }
+        return c;
+      })
+    );
+    
+    // Clear existing timeout for this car
+    if (updateTimeouts.current.has(carId)) {
+      clearTimeout(updateTimeouts.current.get(carId));
+    }
+    
+    // Set new timeout to actually update the server after user stops clicking
+    const timeoutId = setTimeout(async () => {
+      try {
+        setUpdatingQuantities(prev => new Set([...prev, carId]));
+        
+        // Get current state after all UI updates
+        const currentCar = cars.find(c => c._id === carId);
+        const finalQuantity = currentCar ? currentCar.quantity : newQuantity;
+        
+        // Calculate current bookings for this car
+        const allBookings = await bookingsAPI.getAll();
+        const activeBookings = allBookings.filter(booking => 
+          (booking.carId === carId || (booking.carId && booking.carId._id === carId)) &&
+          (booking.status === 'confirmed' || booking.status === 'pending')
+        );
+        
+        const bookedCount = activeBookings.length;
+        
+        if (finalQuantity < bookedCount) {
+          // Revert to original state
+          setCars(prevCars => 
+            prevCars.map(c => c._id === carId ? car : c)
+          );
+          
+          toast({
+            title: "Cannot reduce quantity",
+            description: `This car has ${bookedCount} active bookings. Cannot reduce quantity below ${bookedCount}.`,
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        const correctAvailable = finalQuantity - bookedCount;
+        
+        // Update the server
+        await carsAPI.update(carId, { 
+          ...car, 
+          quantity: finalQuantity, 
+          available: correctAvailable
+        });
+        
+        // Update with correct availability from server calculation
+        setCars(prevCars => 
+          prevCars.map(c => {
+            if (c._id === carId) {
+              return { ...c, quantity: finalQuantity, available: correctAvailable };
+            }
+            return c;
+          })
+        );
+        
+        // Only call onStatsUpdate without reloading the entire car list
+        if (onStatsUpdate) {
+          onStatsUpdate();
+        }
+        
+      } catch (error) {
+        // Revert to original state on error
+        setCars(prevCars => 
+          prevCars.map(c => c._id === carId ? car : c)
+        );
+        toast({
+          title: "Error updating quantity",
+          description: error.message,
+          variant: "destructive"
+        });
+      } finally {
+        setUpdatingQuantities(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(carId);
+          return newSet;
+        });
+        updateTimeouts.current.delete(carId);
+      }
+    }, 1000); // Wait 1 second after last click
+    
+    updateTimeouts.current.set(carId, timeoutId);
   };
 
   if (loading) {
@@ -195,13 +337,21 @@ const CarManagement = ({ onStatsUpdate }) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Car Management</h2>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Car
-            </Button>
-          </DialogTrigger>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={() => {
+            // Only sync availability, don't reload unless specifically requested
+            loadCars();
+          }} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Sync Availability
+          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Car
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add New Car</DialogTitle>
@@ -328,6 +478,7 @@ const CarManagement = ({ onStatsUpdate }) => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -369,19 +520,27 @@ const CarManagement = ({ onStatsUpdate }) => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => adjustQuantity(car._id, car.quantity - 1)}
-                      disabled={car.quantity <= 0 || loading}
+                      onClick={() => adjustQuantity(car._id, -1)}
+                      disabled={car.quantity <= 0 || updatingQuantities.has(car._id)}
                     >
-                      -
+                      {updatingQuantities.has(car._id) ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600"></div>
+                      ) : (
+                        "-"
+                      )}
                     </Button>
-                    <span className="font-semibold">{car.quantity}</span>
+                    <span className="font-semibold min-w-[2ch] text-center">{car.quantity}</span>
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => adjustQuantity(car._id, car.quantity + 1)}
-                      disabled={loading}
+                      onClick={() => adjustQuantity(car._id, 1)}
+                      disabled={updatingQuantities.has(car._id)}
                     >
-                      +
+                      {updatingQuantities.has(car._id) ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600"></div>
+                      ) : (
+                        "+"
+                      )}
                     </Button>
                   </div>
                 </div>

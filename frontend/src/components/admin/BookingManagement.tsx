@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Search, Filter, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Calendar, Search, Filter, CheckCircle, XCircle, Clock, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { bookingsAPI } from "@/services/api";
 
@@ -15,6 +15,7 @@ const BookingManagement = ({ onStatsUpdate }) => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
   const [loading, setLoading] = useState(false);
+  const [updatingBookings, setUpdatingBookings] = useState(new Set());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -67,23 +68,45 @@ const BookingManagement = ({ onStatsUpdate }) => {
 
   const updateBookingStatus = async (bookingId, newStatus) => {
     try {
-      setLoading(true);
+      // Add to updating set to show loading state
+      setUpdatingBookings(prev => new Set([...prev, bookingId]));
+      
+      // Optimistically update the UI first
+      setBookings(prevBookings =>
+        prevBookings.map(booking =>
+          booking._id === bookingId
+            ? { ...booking, status: newStatus }
+            : booking
+        )
+      );
+      
+      // Update the server
       await bookingsAPI.update(bookingId, { status: newStatus });
-      await loadBookings();
-      onStatsUpdate();
+      
+      // Only call onStatsUpdate without reloading all bookings
+      if (onStatsUpdate) {
+        onStatsUpdate();
+      }
       
       toast({
         title: "Booking updated",
         description: `Booking status changed to ${newStatus}.`,
       });
     } catch (error) {
+      // Revert optimistic update on error
+      await loadBookings();
       toast({
         title: "Error updating booking",
         description: error.message || "Failed to update booking status",
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      // Remove from updating set
+      setUpdatingBookings(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(bookingId);
+        return newSet;
+      });
     }
   };
 
@@ -114,14 +137,32 @@ const BookingManagement = ({ onStatsUpdate }) => {
   };
 
   if (loading && bookings.length === 0) {
-    return <div className="flex justify-center items-center h-32">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-32">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading bookings...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Booking Management</h2>
-        <Badge variant="outline">{filteredBookings.length} bookings</Badge>
+        <div className="flex items-center space-x-2">
+          <Badge variant="outline">{filteredBookings.length} bookings</Badge>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={loadBookings} 
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -231,16 +272,22 @@ const BookingManagement = ({ onStatsUpdate }) => {
                     <Button 
                       size="sm" 
                       onClick={() => updateBookingStatus(booking._id, "confirmed")}
-                      disabled={loading}
+                      disabled={updatingBookings.has(booking._id)}
                     >
+                      {updatingBookings.has(booking._id) ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      ) : null}
                       Confirm
                     </Button>
                     <Button 
                       size="sm" 
                       variant="destructive"
                       onClick={() => updateBookingStatus(booking._id, "cancelled")}
-                      disabled={loading}
+                      disabled={updatingBookings.has(booking._id)}
                     >
+                      {updatingBookings.has(booking._id) ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      ) : null}
                       Cancel
                     </Button>
                   </>
@@ -251,16 +298,22 @@ const BookingManagement = ({ onStatsUpdate }) => {
                     <Button 
                       size="sm" 
                       onClick={() => updateBookingStatus(booking._id, "completed")}
-                      disabled={loading}
+                      disabled={updatingBookings.has(booking._id)}
                     >
+                      {updatingBookings.has(booking._id) ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      ) : null}
                       Mark Complete
                     </Button>
                     <Button 
                       size="sm" 
                       variant="destructive"
                       onClick={() => updateBookingStatus(booking._id, "cancelled")}
-                      disabled={loading}
+                      disabled={updatingBookings.has(booking._id)}
                     >
+                      {updatingBookings.has(booking._id) ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      ) : null}
                       Cancel
                     </Button>
                   </>
@@ -270,6 +323,7 @@ const BookingManagement = ({ onStatsUpdate }) => {
                   size="sm" 
                   variant="outline"
                   onClick={() => sendNotification(booking._id, "Booking update sent to user")}
+                  disabled={updatingBookings.has(booking._id)}
                 >
                   Notify User
                 </Button>

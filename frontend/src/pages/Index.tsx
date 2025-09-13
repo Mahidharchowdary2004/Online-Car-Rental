@@ -146,13 +146,13 @@ const Index = () => {
                     </div>
                   </CardTitle>
                   <CardDescription>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <span className="flex items-center space-x-4 text-sm text-gray-600">
                       <span className="flex items-center">
                         <Users className="h-4 w-4 mr-1" />
                         {car.seats} seats
                       </span>
                       <span>{car.transmission}</span>
-                    </div>
+                    </span>
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

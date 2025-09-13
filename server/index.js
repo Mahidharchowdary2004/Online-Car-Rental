@@ -21,8 +21,9 @@ if (fs.existsSync(frontendPath)) {
   console.log('📁 Expected path:', frontendPath);
 }
 
-// MongoDB connection
+// MongoDB connection here you should change the URI to your MongoDB connection string
 const MONGODB_URI = 'mongodb+srv://nallapanenimahidhar2004:LpmwoYdr4euwYEyX@cluster0.oclfqi3.mongodb.net/carRental?retryWrites=true&w=majority';
+// keep your MongoDB URI secure and do not expose it in public repositories
 
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
